@@ -1,4 +1,4 @@
-name: Security Checks react-typescript-example
+name: Security Checks
 
 on:
   pull_request:
