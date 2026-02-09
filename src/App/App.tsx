@@ -12,6 +12,7 @@ const mapDispatchToProps = {
 const connector = connect(mapStateToProps, mapDispatchToProps);
 interface Props extends ConnectedProps<typeof connector> {}
 
+
 const _App = (props: Props) => {
   useEffect(() => {
     const { loadUser, logout } = props;
