@@ -118,17 +118,16 @@ jobs:
     steps:
       - name: Checkout
         # actions/checkout v4.2.2
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683    
 
       - name: Run OSV-Scanner
         # google/osv-scanner-action v2.0.2
-        uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@bde9a81a1a3044e5f0a2f72cf9fb9b9c4f6e0174
+        uses: google/osv-scanner-action@bde9a81a1a3044e5f0a2f72cf9fb9b9c4f6e0174
         with:
           scan-args: |-
             --lockfile=./yarn.lock
             --format=sarif
             --output=osv-report.sarif
-          results-file: osv-report.sarif
 
       - name: Upload OSV SARIF to GitHub Security tab
         if: always()
