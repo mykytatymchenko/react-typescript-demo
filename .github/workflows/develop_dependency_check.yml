@@ -123,11 +123,9 @@ jobs:
         with:
           fetch-depth: 0  # PR action needs full history to compute diff
 
-      - name: Run OSV-Scanner (PR variant)
-        # google/osv-scanner-action/osv-scanner-pr-action v2.3.5
-        # /osv-scanner-pr-action sub-action is designed for pull_request triggers;
-        # it diffs base..head and only reports vulnerabilities introduced by this PR.
-        uses: google/osv-scanner-action/osv-scanner-pr-action@c51854704019a247608d928f370c98740469d4b5
+      - name: Run OSV-Scanner
+        # google/osv-scanner-action/osv-scanner-action v2.3.5
+        uses: google/osv-scanner-action/osv-scanner-action@7222d1c7ee4f96d71d883e0d3c603f1e1705eca9
         with:
           scan-args: |-
             --lockfile=./yarn.lock
@@ -163,7 +161,7 @@ jobs:
           python-version: "3.13"
 
       - name: Install Semgrep (pinned version)
-        run: pip install semgrep==1.113.0
+        run: pip install setuptools semgrep==1.113.0 --break-system-packages
 
       - name: Run Semgrep scan
         run: |
