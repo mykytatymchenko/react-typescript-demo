@@ -54,7 +54,7 @@ jobs:
           # GITLEAKS_NOTIFY_USER_LIST: '@you'   # optional: tag on PR comment
 
   # ──────────────────────────────────────────────────────────────────────────
-  # 2. Dependency Vulnerability Scanning — Grype (replaces Trivy)
+  # 2. Dependency Vulnerability Scanning — Grype
   #
   #    WHY: aquasecurity/trivy-action was compromised via tag-poisoning on
   #    2026-03-19 (TeamPCP supply-chain attack). All version tags were
