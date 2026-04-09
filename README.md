@@ -2,15 +2,15 @@
 
 Template Typescript React Project
 
-![Travis (.com)](https://img.shields.io/travis/com/tienduy-nguyen/typescript-react-boilerplate)
 [![Netlify Status](https://api.netlify.com/api/v1/badges/2c01fcbb-9811-4e0e-b86c-e1b79e4f2c46/deploy-status)](https://app.netlify.com/sites/reactts-boilerplate/deploys)
+![Security Checks](../../actions/workflows/develop_dependency_check.yml/badge.svg?branch=develop)
 
 
 Demo deploy at: [reactts-boilerplate.netlify.app](https://reactts-boilerplate.netlify.app/)
 
 
 
-**This version is deprecated, It will be updated & changed soon. Learn more about  [React boiler plate](https://github.com/react-boilerplate/react-boilerplate)**
+
 
 
 ---
@@ -60,7 +60,7 @@ password: 123456
   - Lazy load page
   - Using ant design
   - Using json-server to create fake server backend
-  - CI-CD with Travisci & Github actions
+  - CI/CD with GitHub Actions (Gitleaks, Grype, OSV-Scanner, Semgrep)
   
 
 ## Project structure

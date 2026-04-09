@@ -1,108 +1,196 @@
 name: Security Checks
 
+# ────────────────────────────────────────────────────────────────────────────
+# IMPORTANT: All third-party actions are pinned to immutable commit SHAs.
+# DO NOT replace SHAs with floating tags (e.g. @v2, @master) – that was
+# exactly the attack vector used to compromise aquasecurity/trivy-action in
+# March 2026 (tag-poisoning / supply-chain attack by TeamPCP).
+#
+# To update a pinned action:
+#   1. Go to the action's GitHub releases page.
+#   2. Copy the full 40-char commit SHA for the desired release.
+#   3. Update the SHA below and note the version in the inline comment.
+#
+# Recommend enabling Dependabot for GitHub Actions to receive automated PRs
+# when new versions are available (.github/dependabot.yml):
+#   updates:
+#     - package-ecosystem: "github-actions"
+#       directory: "/"
+#       schedule:
+#         interval: "weekly"
+# ────────────────────────────────────────────────────────────────────────────
+
 on:
   pull_request:
     branches: [develop]
   workflow_dispatch:
 
-permissions:
-  contents: read
-  actions: read
-  security-events: write
-  issues: write
-  pull-requests: write
+# Default: deny everything; each job grants only what it needs.
+permissions: {}
 
 jobs:
 
+  # ──────────────────────────────────────────────────────────────────────────
+  # 1. Secret Scanning — Gitleaks
+  # ──────────────────────────────────────────────────────────────────────────
   gitleaks_scan:
-    name: Gitleaks scan
+    name: Gitleaks — secret scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read        # checkout
+      pull-requests: write  # post PR comment on findings
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout (full history for Gitleaks)
+        # actions/checkout v4.3.0
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
         with:
-          fetch-depth: 0
+          fetch-depth: 0   # Gitleaks needs the full git history
 
-      - name: Run Gitleaks Scan
-        uses: gitleaks/gitleaks-action@v2
+      - name: Run Gitleaks scan
+        # gitleaks/gitleaks-action v2.3.9
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # GITLEAKS_NOTIFY_USER_LIST: '@you'   # optional: tag on PR comment
 
-  trivy_scan:
-    name: Trivy scan
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2. Dependency Vulnerability Scanning — Grype
+  #
+  #    WHY: aquasecurity/trivy-action was compromised via tag-poisoning on
+  #    2026-03-19 (TeamPCP supply-chain attack). All version tags were
+  #    force-pushed to malicious commits that stole CI/CD credentials.
+  #    Grype (by Anchore) is the recommended open-source alternative.
+  # ──────────────────────────────────────────────────────────────────────────
+  grype_scan:
+    name: Grype — dependency vulnerability scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write  # upload SARIF to GitHub Security tab
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout v4.3.0
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
 
       - name: Install dependencies
-        run: |
-          yarn install
+        run: yarn install --frozen-lockfile
 
-      - name: Run Trivy scan
-        uses: aquasecurity/trivy-action@master
+      - name: Generate SBOM with Syft
+        # anchore/sbom-action v0.24.0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
         with:
-          scan-type: "fs"
-          scan-ref: "./"
-          format: "json"
-          output: "trivy-report.json"
-          severity: "HIGH,CRITICAL"
-          exit-code: 1
-          scanners: vuln,secret,misconfig
+          path: "./"
+          format: "spdx-json"
+          output-file: "${{ github.workspace }}/sbom.spdx.json"
+          artifact-name: "sbom.spdx.json"
 
-      - name: Run Trivy Convert report
-        if: always()
-        run: |
-          trivy convert \
-            --format template \
-            --output trivy-summary.html \
-            --template @/${{ github.workspace }}/.github/templates/trivy_summary.tpl \
-            trivy-report.json
-          trivy convert \
-            --format sarif \
-            --output trivy-report.sarif \
-            trivy-report.json
-
-      - name: Upload Trivy SARIF
-        if: always()
-        uses: github/codeql-action/upload-sarif@v3
+      - name: Scan SBOM with Grype
+        # anchore/scan-action v7.4.0
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
+        id: grype
         with:
-          sarif_file: trivy-report.sarif
+          sbom: "${{ github.workspace }}/sbom.spdx.json"
+          severity-cutoff: high
+          fail-build: true
+          output-format: sarif
+          output-file: grype-report.sarif
 
-      - name: Publish Trivy summary
+      - name: Upload Grype SARIF to GitHub Security tab
         if: always()
-        run: |
-          cat trivy-summary.html >> $GITHUB_STEP_SUMMARY
+        # github/codeql-action/upload-sarif v3.28.4
+        uses: github/codeql-action/upload-sarif@45775bd8235c68ba998cffa5171334d58593da47
+        with:
+          sarif_file: grype-report.sarif
+          category: grype
 
-  semgrep_scan:
-    name: Semgrep scan
+  # ──────────────────────────────────────────────────────────────────────────
+  # 3. Open-Source Vulnerability Scanning — OSV-Scanner (Google)
+  #    Queries the OSV database — aggregates NVD, GitHub Advisories, etc.
+  #    Provides guided remediation with exact fix versions.
+  #    Uses PR-specific action to scan only changed dependencies in the diff.
+  # ──────────────────────────────────────────────────────────────────────────
+  osv_scan:
+    name: OSV-Scanner — open-source vulnerability scan
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+      pull-requests: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        # actions/checkout v4.3.0
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with:
+          fetch-depth: 0  # PR action needs full history to compute diff
 
-      - name: Install Semgrep
-        run: pip install semgrep
+      - name: Run OSV-Scanner
+        # google/osv-scanner-action/osv-scanner-action v2.3.5
+        uses: google/osv-scanner-action/osv-scanner-action@7222d1c7ee4f96d71d883e0d3c603f1e1705eca9
+        with:
+          scan-args: |-
+            --lockfile=./yarn.lock
+            --format=sarif
+            --output=osv-report.sarif
 
-      - name: Run Semgrep Scan
+      - name: Upload OSV SARIF to GitHub Security tab
+        if: always()
+        # github/codeql-action/upload-sarif v3.28.4
+        uses: github/codeql-action/upload-sarif@45775bd8235c68ba998cffa5171334d58593da47
+        with:
+          sarif_file: osv-report.sarif
+          category: osv-scanner
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 4. SAST — Semgrep
+  # ──────────────────────────────────────────────────────────────────────────
+  semgrep_scan:
+    name: Semgrep — static analysis
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        # actions/checkout v4.3.0
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+
+      - name: Set up Python
+        # actions/setup-python v6.2.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
+        with:
+          python-version: "3.13"
+
+      - name: Install Semgrep (pinned version)
+        run: |
+          pip install setuptools==75.8.2
+          pip install semgrep==1.113.0
+
+      - name: Run Semgrep scan
         run: |
           semgrep scan \
-            --config auto \
+            --config p/default \
+            --config p/security-audit \
+            --config p/secrets \
             --text \
-            --text-output semgrep-report.text \
+            --text-output semgrep-report.txt \
             --sarif \
             --sarif-output semgrep-report.sarif \
             --error --quiet ./src
+        env:
+          SEMGREP_SEND_METRICS: off
 
-      - name: Upload Semgrep SARIF
+      - name: Upload Semgrep SARIF to GitHub Security tab
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        # github/codeql-action/upload-sarif v3.28.4
+        uses: github/codeql-action/upload-sarif@45775bd8235c68ba998cffa5171334d58593da47
         with:
           sarif_file: semgrep-report.sarif
+          category: semgrep
 
       - name: Publish Semgrep summary
         if: always()
         run: |
+          echo '### Semgrep Results' >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
-          cat semgrep-report.text >> $GITHUB_STEP_SUMMARY
+          cat semgrep-report.txt >> $GITHUB_STEP_SUMMARY
           echo '```' >> $GITHUB_STEP_SUMMARY
