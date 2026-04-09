@@ -41,14 +41,14 @@ jobs:
       pull-requests: write  # post PR comment on findings
     steps:
       - name: Checkout (full history for Gitleaks)
-        # actions/checkout v4.2.2
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        # actions/checkout v4.3.0
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
         with:
           fetch-depth: 0   # Gitleaks needs the full git history
 
       - name: Run Gitleaks scan
         # gitleaks/gitleaks-action v2.3.9
-        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c8
+        uses: gitleaks/gitleaks-action@ff98106e4c7b2bc287b24eaf42907196329070c7
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # GITLEAKS_NOTIFY_USER_LIST: '@you'   # optional: tag on PR comment
@@ -69,15 +69,15 @@ jobs:
       security-events: write  # upload SARIF to GitHub Security tab
     steps:
       - name: Checkout
-        # actions/checkout v4.2.2
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        # actions/checkout v4.3.0
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
 
       - name: Install dependencies
         run: yarn install --frozen-lockfile
 
       - name: Generate SBOM with Syft
-        # anchore/syft-action v2.4.0
-        uses: anchore/syft-action@461e2eb0df8420af5b26537dfad57e28e0e4a6e4
+        # anchore/syft-action v0.24.0
+        uses: anchore/syft-action@e22c389904149dbc22b58101806040fa8d37a610
         with:
           path: "./"
           format: "spdx-json"
@@ -85,8 +85,8 @@ jobs:
           artifact-name: "sbom.spdx.json"
 
       - name: Scan SBOM with Grype
-        # anchore/scan-action v6.2.0
-        uses: anchore/scan-action@2c901ab7b74bd61b5a4e4e09f6f8de5cef01e9c8
+        # anchore/scan-action v7.4.0
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2
         id: grype
         with:
           sbom: "${{ github.workspace }}/sbom.spdx.json"
@@ -117,12 +117,12 @@ jobs:
       pull-requests: read
     steps:
       - name: Checkout
-        # actions/checkout v4.2.2
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683    
+        # actions/checkout v4.3.0
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
 
       - name: Run OSV-Scanner
-        # google/osv-scanner-action v2.0.2
-        uses: google/osv-scanner-action@bde9a81a1a3044e5f0a2f72cf9fb9b9c4f6e0174
+        # google/osv-scanner-action v2.3.5
+        uses: google/osv-scanner-action@c51854704019a247608d928f370c98740469d4b5
         with:
           scan-args: |-
             --lockfile=./yarn.lock
@@ -148,12 +148,12 @@ jobs:
       security-events: write
     steps:
       - name: Checkout
-        # actions/checkout v4.2.2
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        # actions/checkout v4.3.0
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
 
       - name: Set up Python
-        # actions/setup-python v5.4.0
-        uses: actions/setup-python@42375524bdc5d359d8500d6bc44e3ae20de7b3b3
+        # actions/setup-python v6.2.0
+        uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405
         with:
           python-version: "3.13"
 
