@@ -76,8 +76,8 @@ jobs:
         run: yarn install --frozen-lockfile
 
       - name: Generate SBOM with Syft
-        # anchore/syft-action v0.24.0
-        uses: anchore/syft-action@e22c389904149dbc22b58101806040fa8d37a610
+        # anchore/sbom-action v0.24.0
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610
         with:
           path: "./"
           format: "spdx-json"
@@ -107,6 +107,7 @@ jobs:
   # 3. Open-Source Vulnerability Scanning — OSV-Scanner (Google)
   #    Queries the OSV database — aggregates NVD, GitHub Advisories, etc.
   #    Provides guided remediation with exact fix versions.
+  #    Uses PR-specific action to scan only changed dependencies in the diff.
   # ──────────────────────────────────────────────────────────────────────────
   osv_scan:
     name: OSV-Scanner — open-source vulnerability scan
@@ -119,10 +120,14 @@ jobs:
       - name: Checkout
         # actions/checkout v4.3.0
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with:
+          fetch-depth: 0  # PR action needs full history to compute diff
 
-      - name: Run OSV-Scanner
-        # google/osv-scanner-action v2.3.5
-        uses: google/osv-scanner-action@c51854704019a247608d928f370c98740469d4b5
+      - name: Run OSV-Scanner (PR variant)
+        # google/osv-scanner-action/osv-scanner-pr-action v2.3.5
+        # /osv-scanner-pr-action sub-action is designed for pull_request triggers;
+        # it diffs base..head and only reports vulnerabilities introduced by this PR.
+        uses: google/osv-scanner-action/osv-scanner-pr-action@c51854704019a247608d928f370c98740469d4b5
         with:
           scan-args: |-
             --lockfile=./yarn.lock
@@ -158,21 +163,20 @@ jobs:
           python-version: "3.13"
 
       - name: Install Semgrep (pinned version)
-        # Pin to a specific release to prevent supply-chain compromise via PyPI.
-        # Check https://github.com/returntocorp/semgrep/releases for updates.
         run: pip install semgrep==1.113.0
 
       - name: Run Semgrep scan
         run: |
           semgrep scan \
-            --config auto \
+            --config p/default \
+            --config p/security-audit \
+            --config p/secrets \
             --text \
             --text-output semgrep-report.txt \
             --sarif \
             --sarif-output semgrep-report.sarif \
             --error --quiet ./src
         env:
-          # Disable telemetry — do not send code fingerprints externally
           SEMGREP_SEND_METRICS: off
 
       - name: Upload Semgrep SARIF to GitHub Security tab
