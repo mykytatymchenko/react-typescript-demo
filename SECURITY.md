@@ -2,20 +2,25 @@
 
 ## Supported Versions
 
-Use this section to tell people about which versions of your project are
-currently being supported with security updates.
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 5.1.x   | :white_check_mark: |
-| 5.0.x   | :x:                |
-| 4.0.x   | :white_check_mark: |
-| < 4.0   | :x:                |
+| Version | Supported |
+| ------- | --------- |
+| latest  | ✅        |
 
 ## Reporting a Vulnerability
 
-Use this section to tell people how to report a vulnerability.
+Please **do not** report security vulnerabilities through public GitHub issues.
 
-Tell them where to go, how often they can expect to get an update on a
-reported vulnerability, what to expect if the vulnerability is accepted or
-declined, etc.
+Instead, open a [GitHub Security Advisory](../../security/advisories/new) in this repository.
+
+We will respond within **72 hours** and aim to release a fix within **14 days** for critical issues.
+
+## Security Measures
+
+This repository uses an automated security pipeline on every pull request:
+
+- **Gitleaks** — scans git history for leaked secrets and credentials
+- **Grype** (Anchore) — scans dependencies for known CVEs via SBOM
+- **OSV-Scanner** (Google) — cross-references vulnerabilities against the OSV database
+- **Semgrep** — static analysis for insecure code patterns (OWASP Top 10, XSS, injection)
+
+All GitHub Actions are pinned to immutable commit SHAs to prevent supply-chain attacks.

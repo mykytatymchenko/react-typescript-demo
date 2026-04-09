@@ -1,3 +1,13 @@
 {
-  "extends": ["config:base"]
+  "extends": ["config:base"],
+  "github-actions": {
+    "pinDigests": true
+  },
+  "packageRules": [
+    {
+      "matchManagers": ["github-actions"],
+      "automerge": false,
+      "labels": ["dependencies", "security"]
+    }
+  ]
 }
